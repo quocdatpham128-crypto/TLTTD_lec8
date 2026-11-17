@@ -1,0 +1,88 @@
+package com.example.tlttd_lec8.ui
+
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.setFragmentResult
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.tlttd_lec8.R
+import com.example.tlttd_lec8.databinding.FragmentStudentListBinding
+import com.example.tlttd_lec8.model.Student
+import com.example.tlttd_lec8.ui.adapter.StudentListAdapter
+import com.example.tlttd_lec8.viewmodel.StudentViewModel
+
+class StudentListFragment : Fragment() {
+    private var _binding: FragmentStudentListBinding? = null
+    private val binding get() = _binding!!
+
+    private val viewModel: StudentViewModel by activityViewModels()
+    private lateinit var studentAdapter: StudentListAdapter
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentStudentListBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        setupRecyclerView()
+        observeViewModel()
+        setupListeners()
+    }
+
+    private fun setupRecyclerView() {
+        studentAdapter = StudentListAdapter(
+            onStudentClick = { student ->
+                viewModel.selectStudent(student)
+                val bundle = Bundle().apply {
+                    putString("STUDENT_ID", student.id)
+                }
+                setFragmentResult("STUDENT_DETAIL_REQ", bundle)
+
+                parentFragmentManager.beginTransaction()
+                    .replace(R.id.fragmentContainer, StudentDetailFragment())
+                    .addToBackStack(null)
+                    .commit()
+            },
+            onDeleteClick = { student ->
+                viewModel.deleteStudent(student.id)
+            }
+        )
+        binding.rvStudents.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = studentAdapter
+            setHasFixedSize(true)
+        }
+    }
+
+    private fun observeViewModel() {
+        viewModel.students.observe(viewLifecycleOwner) { list ->
+            studentAdapter.submitList(list)
+            binding.layoutEmpty.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
+        }
+    }
+
+    private fun setupListeners() {
+        binding.fabAdd.setOnClickListener {
+            val newStudent = Student(
+                id = System.currentTimeMillis().toString(),
+                mssv = "2011" + (1000..9999).random(),
+                name = "Sinh Viên Mới",
+                gpa = 3.50,
+                major = "Công Nghệ Thông Tin",
+                avatarColor = 0xFF7C3AED.toInt()
+            )
+            viewModel.addStudent(newStudent)
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+}
